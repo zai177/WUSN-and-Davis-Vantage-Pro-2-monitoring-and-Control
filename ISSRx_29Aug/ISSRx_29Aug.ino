@@ -31,6 +31,7 @@
 #include<SerialCommand.h>
 #include "SIM800.h"
 #include"Wire.h"
+#include <EEPROM.h>
 //#include<DavisRFM69.h>
 //*********************************************************************************************
 //************ IMPORTANT SETTINGS - YOU MUST CHANGE/CONFIGURE TO FIT YOUR HARDWARE ************
@@ -108,7 +109,7 @@ CommandPacket CPs[WUSNSIZE];
 //char buff[20];
 //byte sendSize=0;
 //boolean requestACK = false, 
-boolean Switch = false;
+
 SPIFlash flash(FLASH_SS, 0xEF30); //EF30 for 4mbit  Windbond chip (W25X40CL)
 
 
@@ -230,24 +231,28 @@ void blink(byte PIN, int DELAY_MS)
 
 void loop()
 {
-       //Serial.println("moving to weather station");
-//     radio.encrypt(0);
-//     radio.Reset_Config_Davis();   //RFM69 mode change to communicate with Weather Sataion
-//     radio.Davis_setChannel(0);        // Set radio to first of 5 channels to receive from weather Station
-    // DavisReceive();               // radio receives 7 correct packets from weather station, and sends them to web server
-     //radio.Reset_Config();       // rfm69 MODE changed back to communicate with WUSN
-     //radio.encrypt(ENCRYPTKEY);
-       //Serial.println("started waiting for packet");
      RSSIPacketHandle();
+//     if(RSSIPacketHandle())
+//     {
+//       Serial.println("moving to weather station");
+//       radio.encrypt(0);
+//       radio.Reset_Config_Davis();   //RFM69 mode change to communicate with Weather Sataion
+//       radio.Davis_setChannel(0);        // Set radio to first of 5 channels to receive from weather Station
+//       DavisReceive();               // radio receives 7 correct packets from weather station, and sends them to web server
+//       radio.Reset_Config();       // rfm69 MODE changed back to communicate with WUSN
+//       radio.encrypt(ENCRYPTKEY);
+//       Serial.println("started waiting for packet");
+//     }
+     
 }
-void RSSIPacketHandle()
+bool RSSIPacketHandle()
 {
   int x = (WUSNSIZE*WUSNSIZE-WUSNSIZE)*3;
-     RSSIPacket RPs[x];
      int n=0;
      String com;
      unsigned long int timer = millis();
      if(radio.receiveDone()){ 
+       
       Serial.println("Packet reception started");
         if(radio.DATALEN == sizeof(RP) && radio.DATA[0] != radio.DATA[1] && radio.DATA[1]!=0)
           {if(radio.ACKRequested())radio.sendACK();
@@ -273,13 +278,15 @@ void RSSIPacketHandle()
      for(int i=0;i<WUSNSIZE;i++)
      {
       CP = CPs[i];
-          if(radio.sendWithRetry(CP.sink_ID,(const void*)(&CP),sizeof(CP))) Serial.print("Command sent"); else Serial.print("Command not sent");
+          if(radio.sendWithRetry(CP.sink_ID,(const void*)(&CP),sizeof(CP),10)) Serial.print("Command sent"); else Serial.print("Command not sent");
      }
      for(int j = 0;j<n;j+=5){String Data = "params=";
           for(int i=0;i<5 && (j+i)<n;i++)
              Data += String(RPs[j+i].source_ID)+ "," + String(RPs[j+i].node_id)+ "," + String(RPs[j+i].seq_num)+ "," + String((RPs[j+i].VWC_0 << 8) | (RPs[j+i].VWC_1))+ "," + String((RPs[j+i].temperature_0 << 8) | (RPs[j+i].temperature_1))+ "," + String((RPs[j+i].RSSI_0 << 8) | (RPs[j+i].RSSI_1))+","+String((RPs[j+i].next_RSSI_0 << 8) | (RPs[j+i].next_RSSI_1))+",";
-             Serial.print(Data);
-             if(Data=="params=") break;
+            
+       
+       Serial.print(Data);
+             if(Data=="params=") {break;Serial.print("empty data");}
              com  = postData(Data.c_str(),"134.102.188.200/RSSIlog.php");
             Serial.println(com);
            }
@@ -302,11 +309,9 @@ void RSSIPacketHandle()
             CP.next_hop_id = byte(A[4*i+3].toInt());
             CPs[i] = CP;
           }
-//          if(radio.sendWithRetry(CP.sink_ID,(const void*)(&CP),sizeof(CP)),10)
-//          Serial.println("Command Sent successfully");
-//          else 
-//          Serial.println("Command Ack not received");
+return true;
 }//else Serial.println("nodes are sleeping");
+return false;
 }
 void DavisReceive()
 {
