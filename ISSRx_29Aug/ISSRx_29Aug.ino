@@ -231,24 +231,23 @@ void blink(byte PIN, int DELAY_MS)
 
 void loop()
 {
-     RSSIPacketHandle();
-//     if(RSSIPacketHandle())
-//     {
-//       Serial.println("moving to weather station");
-//       radio.encrypt(0);
-//       radio.Reset_Config_Davis();   //RFM69 mode change to communicate with Weather Sataion
-//       radio.Davis_setChannel(0);        // Set radio to first of 5 channels to receive from weather Station
-//       DavisReceive();               // radio receives 7 correct packets from weather station, and sends them to web server
-//       radio.Reset_Config();       // rfm69 MODE changed back to communicate with WUSN
-//       radio.encrypt(ENCRYPTKEY);
-//       Serial.println("started waiting for packet");
-//     }
+    if(RSSIPacketHandle())
+    {
+      Serial.println("moving to weather station");
+      radio.encrypt(0);             // removing encrypt key
+      radio.Reset_Config_Davis();   //RFM69 mode change to communicate with Weather Sataion
+      radio.Davis_setChannel(0);        // Set radio to first of 5 channels to receive from weather Station
+      DavisReceive();               // radio receives 7 correct packets from weather station, and sends them to web server
+      radio.Reset_Config();       // rfm69 MODE changed back to communicate with WUSN
+      radio.encrypt(ENCRYPTKEY);    // putting encryption back
+      Serial.println("started waiting for packet");
+    }
      
 }
 bool RSSIPacketHandle()
 {
-  int x = (WUSNSIZE*WUSNSIZE-WUSNSIZE)*3;
-  RSSIPacket RPs[x];
+  int x = (WUSNSIZE*WUSNSIZE-WUSNSIZE)*3;   // x is number of maximum pakcets expected in one wake cycle
+  RSSIPacket RPs[x];                         //array to store received packets
      int n=0;
      String com;
      unsigned long int timer = millis();
@@ -278,20 +277,20 @@ bool RSSIPacketHandle()
      }
      for(int i=0;i<WUSNSIZE;i++)
      {
-      CP = CPs[i];
+      CP = CPs[i];         // sending commands to all nodes one by one
           if(radio.sendWithRetry(CP.sink_ID,(const void*)(&CP),sizeof(CP),10)) Serial.print("Command sent"); else Serial.print("Command not sent");
      }
      for(int j = 0;j<n;j+=5){String Data = "params=";
-          for(int i=0;i<5 && (j+i)<n;i++)
+          for(int i=0;i<5 && (j+i)<n;i++)   // taking chucks of 5 packets from received packets' array and sending them to server
              Data += String(RPs[j+i].source_ID)+ "," + String(RPs[j+i].node_id)+ "," + String(RPs[j+i].seq_num)+ "," + String((RPs[j+i].VWC_0 << 8) | (RPs[j+i].VWC_1))+ "," + String((RPs[j+i].temperature_0 << 8) | (RPs[j+i].temperature_1))+ "," + String((RPs[j+i].RSSI_0 << 8) | (RPs[j+i].RSSI_1))+","+String((RPs[j+i].next_RSSI_0 << 8) | (RPs[j+i].next_RSSI_1))+",";
             
        
-       Serial.print(Data);
-             if(Data=="params=") {break;Serial.print("empty data");}
-             com  = postData(Data.c_str(),"134.102.188.200/RSSIlog.php");
+       Serial.print(Data);    
+             if(Data=="params=") {break;Serial.print("empty data");}   //checking if all no more packets left to send to server
+             com  = postData(Data.c_str(),"134.102.188.200/RSSIlog.php");  // server returns new commands for WUSN
             Serial.println(com);
            }
-          com = com.substring(com.indexOf('{')+1,com.indexOf('}'));
+          com = com.substring(com.indexOf('{')+1,com.indexOf('}'));    
           String A[WUSNSIZE*4];
           int count =0;
           int firstIndex =-1;
@@ -302,15 +301,15 @@ bool RSSIPacketHandle()
                count++;
                firstIndex = i;
                }
-          for (int i = 0 ;i<WUSNSIZE ;i++)
+          for (int i = 0 ;i<WUSNSIZE ;i++) //updatin commands packets to be send on next round
           {
             CP.sink_ID = byte(A[4*i].toInt());
             CP.sample_rate = byte(A[4*i+1].toInt());
             CP.sleep_time = byte(A[4*i+2].toInt());
             CP.next_hop_id = byte(A[4*i+3].toInt());
-            CPs[i] = CP;
+            CPs[i] = CP;  
           }
-return true;
+return true;  //true means now base station can switch to weather station mode
 }//else Serial.println("nodes are sleeping");
 return false;
 }
@@ -319,7 +318,7 @@ void DavisReceive()
 unsigned long lastRxTime = millis();
 byte hopCount = 0;
 int counter  =0;
-  String h = "0",t= "0",ws= "0",wg= "0",r= "0",d= "0",weatherData= "0";
+  String h = "0",t= "0",ws= "0",wg= "0",r= "0",d= "0",weatherData= "0";  //parameters to store weather data
   while(true){
          if (radio.Davis_receiveDone()) {
     packetStats.packetsReceived++;
@@ -352,16 +351,16 @@ if (radio.Davis_DATA[DAVIS_PACKET_LEN-1]==255 && radio.Davis_DATA[DAVIS_PACKET_L
   //Serial.print("Wind Direction : ");
   //Serial.print(radio.Davis_DATA[2]*360/255);
   //Serial.print("  ");
-  switch (radio.Davis_DATA[0] >> 4) {
+  switch (radio.Davis_DATA[0] >> 4) { //checking the first byte of data arrived packet from weather station
     case VP2P_TEMP:
 //      //Serial.print("Outside Temprature : ");
-      t = String((float)(word(radio.Davis_DATA[3], radio.Davis_DATA[4]) >> 4)/10);
+      t = String((float)(word(radio.Davis_DATA[3], radio.Davis_DATA[4]) >> 4)/10);  // temperature
 //      //Serial.print(t);
 //      //Serial.print("degree C \n");
       break;
     case VP2P_HUMIDITY:
 //      //Serial.print("Outside Humidity : ");
-      h = String((float)(word((radio.Davis_DATA[4] >> 4), radio.Davis_DATA[3])) / 10.0);
+      h = String((float)(word((radio.Davis_DATA[4] >> 4), radio.Davis_DATA[3])) / 10.0); //humidity
 //      //Serial.print(h);
 //      //Serial.print("\n");
       break;
@@ -377,26 +376,26 @@ if (radio.Davis_DATA[DAVIS_PACKET_LEN-1]==255 && radio.Davis_DATA[DAVIS_PACKET_L
 //      //Serial.print(Rain_secs);
 //      //Serial.print("{225 means no rain} \n");
       break;
-    case VP2P_SOLAR:
-//      //Serial.print("Solar Radiation : ");
+    case VP2P_SOLAR:  //currently we are not storing the solar packets
+//      //Serial.print("Solar Radiation : ");   
    //   Solar = ((float)((word((radio.Davis_DATA[3] << 8), radio.Davis_DATA[4]))>>6) * 1.757936);
 //      //Serial.print(Solar);
 //      //Serial.print("\n");
       break;
     case VP2P_WINDGUST:
 //      //Serial.print("Last 10 Min wind gust : ");
-      wg = String(radio.Davis_DATA[3]);
+      wg = String(radio.Davis_DATA[3]);  //windgust
 //      //Serial.print(wg);
 //      //Serial.print("\n");
       break;
     case VP2P_RAIN:
 //      //Serial.print("Rain Bucket Tips : ");
-      r = String(radio.Davis_DATA[3]);
+      r = String(radio.Davis_DATA[3]);  //rain buckets
 //      //Serial.print(r);
 //      //Serial.print("\n");
       break;
   }
-  if(++counter ==7)
+  if(++counter ==9)
   {
     weatherData = "params=" + t + "," +  h + "," + ws + "," + wg + "," + r + "," + d+",";
      postData(weatherData.c_str(),"134.102.188.200/deploy2.php");
@@ -425,17 +424,17 @@ if (hopCount == 1) packetStats.numResyncs++;
 
 
 
-String postData(const char* data4,const char* url)
+String postData(const char* data4,const char* url)   //function to send data to web server URL "url"
 { 
   //static const char* url = "134.102.188.200/deploy2.php"; 
   unsigned long    time6;
   unsigned long    diff3;
 unsigned long  time5 = millis();
-  for (;;) 
+  for (;;)  // check the gprs state, it its ok loop breaks, otherwise keeps trying to reconnect
     {
     if (gprs.httpInit()) 
     {
-      Serial.print("HTTP Connection");
+      Serial.print("HTTP Connection");  //gprs already connected
       Serial.println(gprs.buffer);
       break;
     }
@@ -449,7 +448,7 @@ unsigned long  time5 = millis();
     Serial.print("Time for http Connection: ");
 unsigned long    diff3 = time6 - time5;
     //Serial.println(diff1);
-    if(diff3 >= 60000)
+    if(diff3 >= 60000) //reset gsm shield if 1 minute is passed with connection set up
     {
       Serial.print("Time for http Connection: ");
       Serial.println(diff3);
@@ -468,7 +467,7 @@ unsigned long    diff3 = time6 - time5;
         byte ret = gprs.setup(APN);
         if (ret == 0)
         {
-          break;
+          break;      //breaks infinite loop 
         }
         Serial.print("Error code:");
         Serial.println(ret);
@@ -488,7 +487,7 @@ unsigned long    diff3 = time6 - time5;
         Serial.println("dB");
       }
     }
-    delay(1000);
+    delay(1000);   
   }
   delay(3000);
   gprs.httpConnect(url);
@@ -508,17 +507,17 @@ time5 = millis();
          Serial.print("Time for link Connection : ");
          Serial.println(diff4);
          time5 = millis();
-         check = 2;
+         check = 2;       // no connection after 1 minute it should reset GSM shield again
          Serial.println("Connection Lost");
        } 
     }
-    if(check == 1)
+    if(check == 1) //http is connected 
     {
       Serial.println("Cool");
       Serial.println(gprs.buffer);
       break;
     }
-    if(check == 2)
+    if(check == 2)  //error from http, gsm shield needs to be reset
     {
       Serial.println("Not cool");
       Serial.println(gprs.buffer);
@@ -573,7 +572,7 @@ time5 = millis();
   gprs.sendCommand("AT+HTTPPARA=CONTENT,application/x-www-form-urlencoded");
   delay(100);
   Serial.println(gprs.buffer);
-  if(data4!=""){
+  if(data4!=""){  //if we need get operation only(used once in setup only to get commands data from server)
       gprs.sendCommand("AT+HTTPDATA=192,10000");
       delay(100);
       Serial.println(gprs.buffer);
