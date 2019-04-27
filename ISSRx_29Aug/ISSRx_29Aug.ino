@@ -248,6 +248,7 @@ void loop()
 bool RSSIPacketHandle()
 {
   int x = (WUSNSIZE*WUSNSIZE-WUSNSIZE)*3;
+  RSSIPacket RPs[x];
      int n=0;
      String com;
      unsigned long int timer = millis();
