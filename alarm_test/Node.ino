@@ -1,42 +1,5 @@
  /******************************************************************************
- * MoleNet - A Wireless Underground Sensor Network
- *
- * Copyright (C) 2016, Communication Networks, University of Bremen, Germany
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, see <http://www.gnu.org/licenses/>
- *
- * This file is part of MoleNet
- *
- ******************************************************************************
- * ============================================================================
- *
- *       Filename:  alarm_test.ino
- *
- *    Description:  A sample code to active minute alaram for RV8523.
- *                  Arduino Sketch
- *
- *        Version:  1.0
- *        Created:  13/08/2016 16:00:00 
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  Muhammad Haseeb (MSc. Student-IAE University of Bremen), 
- *                  mhaseeb@uni-bremen.de, 
- *                  hasee.b@hotmail.com
- *   Organization:  COMNETS, Communication Networks Department
- *                  University of Bremen, Bremen, Germany
- *
- * ============================================================================
+ This file needs to be downloaded on a Molenet node with RTC and 5TM decagon sensor connected to it.
  */
 
 #include "decagon_5tm.h"
